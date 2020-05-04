@@ -236,10 +236,10 @@ test "zig fmt: anon list literal syntax" {
 test "zig fmt: async function" {
     try testCanonical(
         \\pub const Server = struct {
-        \\    handleRequestFn: async fn (*Server, *const std.net.Address, File) void,
+        \\    handleRequestFn: fn (*Server, *const std.net.Address, File) callconv(.Async) void,
         \\};
         \\test "hi" {
-        \\    var ptr = @ptrCast(async fn (i32) void, other);
+        \\    var ptr = @ptrCast(fn (i32) callconv(.Async) void, other);
         \\}
         \\
     );
@@ -431,15 +431,6 @@ test "zig fmt: aligned struct field" {
         \\pub const S = struct {
         \\    f: i32 align(32) = 1,
         \\};
-        \\
-    );
-}
-
-test "zig fmt: preserve space between async fn definitions" {
-    try testCanonical(
-        \\async fn a() void {}
-        \\
-        \\async fn b() void {}
         \\
     );
 }
@@ -1499,7 +1490,7 @@ test "zig fmt: line comments in struct initializer" {
 
 test "zig fmt: first line comment in struct initializer" {
     try testCanonical(
-        \\pub async fn acquire(self: *Self) HeldLock {
+        \\pub fn acquire(self: *Self) HeldLock {
         \\    return HeldLock{
         \\        // guaranteed allocation elision
         \\        .held = self.lock.acquire(),
@@ -2461,8 +2452,7 @@ test "zig fmt: fn type" {
         \\}
         \\
         \\const a: fn (u8) u8 = undefined;
-        \\const b: extern fn (u8) u8 = undefined;
-        \\const c: fn (u8) callconv(.Naked) u8 = undefined;
+        \\const b: fn (u8) callconv(.Naked) u8 = undefined;
         \\const ap: fn (u8) u8 = a;
         \\
     );
@@ -2484,7 +2474,7 @@ test "zig fmt: inline asm" {
 
 test "zig fmt: async functions" {
     try testCanonical(
-        \\async fn simpleAsyncFn() void {
+        \\fn simpleAsyncFn() void {
         \\    const a = async a.b();
         \\    x += 1;
         \\    suspend;
@@ -2906,6 +2896,26 @@ test "zig fmt: hexadeciaml float literals with underscore separators" {
         \\    const b: f64 = 0x0010.0 - -0x00_10. + 0x10.00 + 0x1p4;
         \\    std.debug.warn("a: {}, b: {} -> a+b: {}\n", .{ a, b, a + b });
         \\}
+        \\
+    );
+}
+
+test "zig fmt: convert async fn into callconv(.Async)" {
+    try testTransform(
+        \\async fn foo() void {}
+    ,
+        \\fn foo() callconv(.Async) void {}
+        \\
+    );
+}
+
+test "zig fmt: convert extern fn proto into callconv(.C)" {
+    try testTransform(
+        \\extern fn foo0() void {}
+        \\const foo1 = extern fn () void;
+    ,
+        \\extern fn foo0() void {}
+        \\const foo1 = fn () callconv(.C) void;
         \\
     );
 }
