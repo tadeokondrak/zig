@@ -845,6 +845,13 @@ enum ZigClangExpr_ConstExprUsage {
     ZigClangExpr_EvaluateForMangling,
 };
 
+enum ZigClangNullabilityKind {
+    ZigClangNullability_NonNull,
+    ZigClangNullability_Nullable,
+    ZigClangNullability_Unspecified,
+    ZigClangNullability_Invalid,
+};
+
 ZIG_EXTERN_C struct ZigClangSourceLocation ZigClangSourceManager_getSpellingLoc(const struct ZigClangSourceManager *,
         struct ZigClangSourceLocation Loc);
 ZIG_EXTERN_C const char *ZigClangSourceManager_getFilename(const struct ZigClangSourceManager *,
@@ -970,6 +977,7 @@ ZIG_EXTERN_C bool ZigClangQualType_isRestrictQualified(struct ZigClangQualType);
 
 ZIG_EXTERN_C enum ZigClangTypeClass ZigClangType_getTypeClass(const struct ZigClangType *self);
 ZIG_EXTERN_C struct ZigClangQualType ZigClangType_getPointeeType(const struct ZigClangType *self);
+ZIG_EXTERN_C enum ZigClangNullabilityKind ZigClangType_getNullability(const struct ZigClangType *self, const struct ZigClangASTContext *ctx);
 ZIG_EXTERN_C bool ZigClangType_isBooleanType(const struct ZigClangType *self);
 ZIG_EXTERN_C bool ZigClangType_isVoidType(const struct ZigClangType *self);
 ZIG_EXTERN_C bool ZigClangType_isArrayType(const struct ZigClangType *self);

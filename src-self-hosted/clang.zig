@@ -773,6 +773,13 @@ pub const ZigClangExpr_ConstExprUsage = extern enum {
     EvaluateForMangling,
 };
 
+pub const ZigClangNullabilityKind = extern enum {
+    NonNull,
+    Nullable,
+    Unspecified,
+    Invalid,
+};
+
 pub extern fn ZigClangSourceManager_getSpellingLoc(self: ?*const struct_ZigClangSourceManager, Loc: struct_ZigClangSourceLocation) struct_ZigClangSourceLocation;
 pub extern fn ZigClangSourceManager_getFilename(self: *const struct_ZigClangSourceManager, SpellingLoc: struct_ZigClangSourceLocation) ?[*:0]const u8;
 pub extern fn ZigClangSourceManager_getSpellingLineNumber(self: ?*const struct_ZigClangSourceManager, Loc: struct_ZigClangSourceLocation) c_uint;
@@ -832,6 +839,7 @@ pub extern fn ZigClangQualType_isVolatileQualified(self: struct_ZigClangQualType
 pub extern fn ZigClangQualType_isRestrictQualified(self: struct_ZigClangQualType) bool;
 pub extern fn ZigClangType_getTypeClass(self: ?*const struct_ZigClangType) ZigClangTypeClass;
 pub extern fn ZigClangType_getPointeeType(self: ?*const struct_ZigClangType) struct_ZigClangQualType;
+pub extern fn ZigClangType_getNullability(self: ?*const struct_ZigClangType, ctx: *const ZigClangASTContext) ZigClangNullabilityKind;
 pub extern fn ZigClangType_isVoidType(self: ?*const struct_ZigClangType) bool;
 pub extern fn ZigClangType_isConstantArrayType(self: ?*const struct_ZigClangType) bool;
 pub extern fn ZigClangType_isRecordType(self: ?*const struct_ZigClangType) bool;

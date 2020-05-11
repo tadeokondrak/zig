@@ -1918,6 +1918,18 @@ ZigClangQualType ZigClangType_getPointeeType(const ZigClangType *self) {
     return bitcast(casted->getPointeeType());
 }
 
+ZigClangNullabilityKind ZigClangType_getNullability(const ZigClangType *self,
+    const ZigClangASTContext *ctx)
+{
+    auto casted = reinterpret_cast<const clang::Type *>(self);
+    auto casted_ctx = reinterpret_cast<const clang::ASTContext *>(ctx);
+    llvm::Optional<clang::NullabilityKind> result = casted->getNullability(*casted_ctx);
+    if (!result.hasValue())
+        return ZigClangNullability_Invalid;
+    return (ZigClangNullabilityKind)result.getValue();
+}
+
+
 bool ZigClangType_isBooleanType(const ZigClangType *self) {
     auto casted = reinterpret_cast<const clang::Type *>(self);
     return casted->isBooleanType();
