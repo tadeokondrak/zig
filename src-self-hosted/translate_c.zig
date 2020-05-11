@@ -4465,14 +4465,16 @@ fn transType(rp: RestorePoint, ty: *const ZigClangType, source_loc: ZigClangSour
                 pointer_node.rhs = try transQualType(rp, child_qt, source_loc);
                 return &optional_node.base;
             }
+            const optional_node = try transCreateNodePrefixOp(rp.c, .OptionalType, .QuestionMark, "?");
             const pointer_node = try transCreateNodePtrType(
                 rp.c,
                 ZigClangQualType_isConstQualified(child_qt),
                 ZigClangQualType_isVolatileQualified(child_qt),
                 .Identifier,
             );
+            optional_node.rhs = &pointer_node.base;
             pointer_node.rhs = try transQualType(rp, child_qt, source_loc);
-            return &pointer_node.base;
+            return &optional_node.base;
         },
         .ConstantArray => {
             const const_arr_ty = @ptrCast(*const ZigClangConstantArrayType, ty);
