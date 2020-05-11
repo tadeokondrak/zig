@@ -481,13 +481,7 @@ ZigType *get_fn_frame_type(CodeGen *g, ZigFn *fn) {
 static void append_ptr_type_attrs(Buf *type_name, ZigType *ptr_type) {
     const char *const_str = ptr_type->data.pointer.is_const ? "const " : "";
     const char *volatile_str = ptr_type->data.pointer.is_volatile ? "volatile " : "";
-    const char *allow_zero_str;
-    if (ptr_type->data.pointer.ptr_len == PtrLenC) {
-        assert(ptr_type->data.pointer.allow_zero);
-        allow_zero_str = "";
-    } else {
-        allow_zero_str = ptr_type->data.pointer.allow_zero ? "allowzero " : "";
-    }
+    const char *allow_zero_str = ptr_type->data.pointer.allow_zero ? "allowzero " : "";
     if (ptr_type->data.pointer.explicit_alignment != 0 || ptr_type->data.pointer.host_int_bytes != 0 ||
             ptr_type->data.pointer.vector_index != VECTOR_INDEX_NONE)
     {
@@ -520,7 +514,6 @@ ZigType *get_pointer_to_type_extra2(CodeGen *g, ZigType *child_type, bool is_con
         uint32_t bit_offset_in_host, uint32_t host_int_bytes, bool allow_zero,
         uint32_t vector_index, InferredStructField *inferred_struct_field, ZigValue *sentinel)
 {
-    assert(ptr_len != PtrLenC || allow_zero);
     assert(!type_is_invalid(child_type));
     assert(ptr_len == PtrLenSingle || child_type->id != ZigTypeIdOpaque);
 

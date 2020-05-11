@@ -31415,10 +31415,6 @@ static Error ir_resolve_lazy_raw(AstNode *source_node, ZigValue *val) {
                     ir_add_error(ira, &lazy_ptr_type->elem_type->base,
                             buf_sprintf("C pointers cannot point to opaque types"));
                     return ErrorSemanticAnalyzeFail;
-                } else if (lazy_ptr_type->is_allowzero) {
-                    ir_add_error(ira, &lazy_ptr_type->elem_type->base,
-                            buf_sprintf("C pointers always allow address zero"));
-                    return ErrorSemanticAnalyzeFail;
                 }
             }
 
@@ -31428,7 +31424,7 @@ static Error ir_resolve_lazy_raw(AstNode *source_node, ZigValue *val) {
                 if (!type_has_bits(ira->codegen, elem_type))
                     align_bytes = 0;
             }
-            bool allow_zero = lazy_ptr_type->is_allowzero || lazy_ptr_type->ptr_len == PtrLenC;
+            bool allow_zero = lazy_ptr_type->is_allowzero;
             assert(val->type->id == ZigTypeIdMetaType);
             val->data.x_type = get_pointer_to_type_extra2(ira->codegen, elem_type,
                     lazy_ptr_type->is_const, lazy_ptr_type->is_volatile, lazy_ptr_type->ptr_len, align_bytes,
