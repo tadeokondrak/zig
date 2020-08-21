@@ -633,6 +633,7 @@ struct TypeUnionField {
     AstNode *decl_node;
     uint32_t gen_index;
     uint32_t align;
+    bool is_zero_bits;
 };
 
 enum NodeType {

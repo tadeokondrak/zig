@@ -280,3 +280,20 @@ test "Type.Struct" {
     testing.expectEqual(@as(usize, 0), infoC.decls.len);
     testing.expectEqual(@as(bool, false), infoC.is_tuple);
 }
+
+test "Type.Union" {
+    const Foo = @Type(.{
+        .Union = .{
+            .layout = .Auto,
+            .tag_type = null,
+            .fields = &[_]TypeInfo.UnionField{
+                .{
+                    .name = "a",
+                    .enum_field = null,
+                    .field_type = u32,
+                },
+            },
+            .decls = &[_]TypeInfo.Declaration{},
+        },
+    });
+}
