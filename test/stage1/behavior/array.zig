@@ -136,11 +136,6 @@ test "array literal with specified size" {
     expect(array[1] == 2);
 }
 
-test "array len property" {
-    var x: [5]i32 = undefined;
-    expect(@TypeOf(x).len == 5);
-}
-
 test "array len field" {
     var arr = [4]u8{ 0, 0, 0, 0 };
     var ptr = &arr;
