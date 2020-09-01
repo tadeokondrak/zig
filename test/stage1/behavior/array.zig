@@ -136,11 +136,6 @@ test "array literal with specified size" {
     expect(array[1] == 2);
 }
 
-test "array child property" {
-    var x: [5]i32 = undefined;
-    expect(@TypeOf(x).Child == i32);
-}
-
 test "array len property" {
     var x: [5]i32 = undefined;
     expect(@TypeOf(x).len == 5);
