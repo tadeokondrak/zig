@@ -10,7 +10,6 @@ test "reflection: error union type child" {
 
 test "reflection: var args, and param types" {
     comptime {
-        expect(!@TypeOf(dummy).is_var_args);
         expect(@TypeOf(dummy).arg_count == 3);
         expect(@typeInfo(@TypeOf(dummy)).Fn.args[0].arg_type.? == bool);
         expect(@typeInfo(@TypeOf(dummy)).Fn.args[1].arg_type.? == i32);
