@@ -715,7 +715,7 @@ pub fn cast(comptime DestType: type, target: anytype) DestType {
                 },
                 .Optional => |opt| {
                     if (@typeInfo(opt.child) == .Pointer) {
-                        return @ptrCast(DestType, @alignCast(@alignOf(opt.child.Child), target));
+                        return @ptrCast(DestType, @alignCast(@alignOf(Child(opt.child)), target));
                     }
                 },
                 else => {},
@@ -732,7 +732,7 @@ pub fn cast(comptime DestType: type, target: anytype) DestType {
                     },
                     .Optional => |target_opt| {
                         if (@typeInfo(target_opt.child) == .Pointer) {
-                            return @ptrCast(DestType, @alignCast(@alignOf(target_opt.child.Child), target));
+                            return @ptrCast(DestType, @alignCast(@alignOf(Child(target_opt.child)), target));
                         }
                     },
                     else => {},
