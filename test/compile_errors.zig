@@ -7198,15 +7198,6 @@ pub fn addCases(cases: *tests.CompileErrorContext) void {
         "tmp.zig:7:24: error: accessing union field 'Bar' while field 'Baz' is set",
     });
 
-    cases.add("getting return type of generic function",
-        \\fn generic(a: anytype) void {}
-        \\comptime {
-        \\    _ = @TypeOf(generic).ReturnType;
-        \\}
-    , &[_][]const u8{
-        "tmp.zig:3:25: error: ReturnType has not been resolved because 'fn(anytype) anytype' is generic",
-    });
-
     cases.add("unsupported modifier at start of asm output constraint",
         \\export fn foo() void {
         \\    var bar: u32 = 3;

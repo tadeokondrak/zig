@@ -133,7 +133,7 @@ pub fn main() !void {
 }
 
 fn runBuild(builder: *Builder) anyerror!void {
-    switch (@typeInfo(@TypeOf(root.build).ReturnType)) {
+    switch (@typeInfo(std.meta.ReturnType(@TypeOf(root.build).?))) {
         .Void => root.build(builder),
         .ErrorUnion => try root.build(builder),
         else => @compileError("expected return type of build to be 'void' or '!void'"),

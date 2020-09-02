@@ -331,7 +331,7 @@ test "async fn with inferred error set" {
         fn doTheTest() void {
             var frame: [1]@Frame(middle) = undefined;
             var fn_ptr = middle;
-            var result: @TypeOf(fn_ptr).ReturnType.ErrorSet!void = undefined;
+            var result: error{Fail}!void = undefined;
             _ = @asyncCall(std.mem.sliceAsBytes(frame[0..]), &result, fn_ptr, .{});
             resume global_frame;
             std.testing.expectError(error.Fail, result);
@@ -950,7 +950,7 @@ test "@asyncCall with comptime-known function, but not awaited directly" {
 
         fn doTheTest() void {
             var frame: [1]@Frame(middle) = undefined;
-            var result: @TypeOf(middle).ReturnType.ErrorSet!void = undefined;
+            var result: error{Fail}!void = undefined;
             _ = @asyncCall(std.mem.sliceAsBytes(frame[0..]), &result, middle, .{});
             resume global_frame;
             std.testing.expectError(error.Fail, result);

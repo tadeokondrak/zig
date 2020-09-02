@@ -8,9 +8,8 @@ test "reflection: error union type child" {
     }
 }
 
-test "reflection: function return type, var args, and param types" {
+test "reflection: var args, and param types" {
     comptime {
-        expect(@TypeOf(dummy).ReturnType == i32);
         expect(!@TypeOf(dummy).is_var_args);
         expect(@TypeOf(dummy).arg_count == 3);
         expect(@typeInfo(@TypeOf(dummy)).Fn.args[0].arg_type.? == bool);

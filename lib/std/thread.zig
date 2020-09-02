@@ -154,6 +154,7 @@ pub const Thread = struct {
         // https://github.com/ziglang/zig/issues/157
         const default_stack_size = 16 * 1024 * 1024;
 
+        const Return = std.meta.ReturnType(startFn);
         const Context = @TypeOf(context);
         comptime assert(@typeInfo(@TypeOf(startFn)).Fn.args[0].arg_type.? == Context);
 
@@ -166,7 +167,7 @@ pub const Thread = struct {
                 fn threadMain(raw_arg: windows.LPVOID) callconv(.C) windows.DWORD {
                     const arg = if (@sizeOf(Context) == 0) {} else @ptrCast(*Context, @alignCast(@alignOf(Context), raw_arg)).*;
 
-                    switch (@typeInfo(@TypeOf(startFn).ReturnType)) {
+                    switch (@typeInfo(Return)) {
                         .NoReturn => {
                             startFn(arg);
                         },
@@ -227,7 +228,7 @@ pub const Thread = struct {
             fn linuxThreadMain(ctx_addr: usize) callconv(.C) u8 {
                 const arg = if (@sizeOf(Context) == 0) {} else @intToPtr(*const Context, ctx_addr).*;
 
-                switch (@typeInfo(@TypeOf(startFn).ReturnType)) {
+                switch (@typeInfo(Return)) {
                     .NoReturn => {
                         startFn(arg);
                     },
@@ -259,7 +260,7 @@ pub const Thread = struct {
             fn posixThreadMain(ctx: ?*c_void) callconv(.C) ?*c_void {
                 const arg = if (@sizeOf(Context) == 0) {} else @ptrCast(*Context, @alignCast(@alignOf(Context), ctx)).*;
 
-                switch (@typeInfo(@TypeOf(startFn).ReturnType)) {
+                switch (@typeInfo(Return)) {
                     .NoReturn => {
                         startFn(arg);
                     },

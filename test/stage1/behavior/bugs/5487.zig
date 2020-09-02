@@ -1,12 +1,12 @@
-const io = @import("std").io;
+const std = @import("std");
 
 pub fn write(_: void, bytes: []const u8) !usize {
     return 0;
 }
-pub fn outStream() io.OutStream(void, @TypeOf(write).ReturnType.ErrorSet, write) {
-    return io.OutStream(void, @TypeOf(write).ReturnType.ErrorSet, write){ .context = {} };
+pub fn outStream() std.io.OutStream(void, std.meta.ReturnType(write).ErrorSet, write) {
+    return std.io.OutStream(void, std.meta.ReturnType(write).ErrorSet, write){ .context = {} };
 }
 
 test "crash" {
-    _ = io.multiOutStream(.{outStream()});
+    _ = std.io.multiOutStream(.{outStream()});
 }
