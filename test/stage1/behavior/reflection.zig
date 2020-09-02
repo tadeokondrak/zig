@@ -2,10 +2,9 @@ const expect = @import("std").testing.expect;
 const mem = @import("std").mem;
 const reflection = @This();
 
-test "reflection: array, pointer, optional, error union type child" {
+test "reflection: array, optional, error union type child" {
     comptime {
         expect(([10]u8).Child == u8);
-        expect((*u8).Child == u8);
         expect((anyerror!u8).Payload == u8);
         expect((?u8).Child == u8);
     }

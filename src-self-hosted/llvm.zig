@@ -1,5 +1,6 @@
 const c = @import("c.zig");
-const assert = @import("std").debug.assert;
+const std = @import("std");
+const assert = std.meta.assert;
 
 // we wrap the c module for 3 reasons:
 // 1. to avoid accidentally calling the non-thread-safe functions
@@ -10,16 +11,16 @@ const assert = @import("std").debug.assert;
 pub const AttributeIndex = c_uint;
 pub const Bool = c_int;
 
-pub const Builder = c.LLVMBuilderRef.Child.Child;
-pub const Context = c.LLVMContextRef.Child.Child;
-pub const Module = c.LLVMModuleRef.Child.Child;
-pub const Value = c.LLVMValueRef.Child.Child;
-pub const Type = c.LLVMTypeRef.Child.Child;
-pub const BasicBlock = c.LLVMBasicBlockRef.Child.Child;
-pub const Attribute = c.LLVMAttributeRef.Child.Child;
-pub const Target = c.LLVMTargetRef.Child.Child;
-pub const TargetMachine = c.LLVMTargetMachineRef.Child.Child;
-pub const TargetData = c.LLVMTargetDataRef.Child.Child;
+pub const Builder = std.meta.Child(std.meta.Child(c.LLVMBuilderRef));
+pub const Context = std.meta.Child(std.meta.Child(c.LLVMContextRef));
+pub const Module = std.meta.Child(std.meta.Child(c.LLVMModuleRef));
+pub const Value = std.meta.Child(std.meta.Child(c.LLVMValueRef));
+pub const Type = std.meta.Child(std.meta.Child(c.LLVMTypeRef));
+pub const BasicBlock = std.meta.Child(std.meta.Child(c.LLVMBasicBlockRef));
+pub const Attribute = std.meta.Child(std.meta.Child(c.LLVMAttributeRef));
+pub const Target = std.meta.Child(std.meta.Child(c.LLVMTargetRef));
+pub const TargetMachine = std.meta.Child(std.meta.Child(c.LLVMTargetMachineRef));
+pub const TargetData = std.meta.Child(std.meta.Child(c.LLVMTargetDataRef));
 pub const DIBuilder = c.ZigLLVMDIBuilder;
 pub const DIFile = c.ZigLLVMDIFile;
 pub const DICompileUnit = c.ZigLLVMDICompileUnit;
@@ -270,7 +271,7 @@ pub const CallAttr = extern enum {
 
 fn removeNullability(comptime T: type) type {
     comptime assert(@typeInfo(T).Pointer.size == .C);
-    return *T.Child;
+    return *std.meta.Child(T);
 }
 
 pub const BuildRet = LLVMBuildRet;

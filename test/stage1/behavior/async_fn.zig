@@ -1018,7 +1018,7 @@ test "@TypeOf an async function call of generic fn with error union type" {
     const S = struct {
         fn func(comptime x: anytype) anyerror!i32 {
             const T = @TypeOf(async func(x));
-            comptime expect(T == @TypeOf(@frame()).Child);
+            comptime expect(T == @typeInfo(@TypeOf(@frame())).Pointer.child);
             return undefined;
         }
     };

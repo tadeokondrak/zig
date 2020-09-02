@@ -577,10 +577,6 @@ test "slice string literal has correct type" {
     comptime expect(@TypeOf(array[runtime_zero..]) == []const i32);
 }
 
-test "pointer child field" {
-    expect((*u32).Child == u32);
-}
-
 test "struct inside function" {
     testStructInFn();
     comptime testStructInFn();
