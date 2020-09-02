@@ -781,3 +781,20 @@ test "std.meta.cast" {
     testing.expect(cast(u8, E.Two) == 2);
     testing.expect(cast(*u64, &i).* == @as(u64, 10));
 }
+
+// Given a function, returns its return type.
+fn ReturnType(f: anytype) ?type {
+    return @typeInfo(@TypeOf(f)).Fn.return_type;
+}
+
+test "std.meta.ReturnType" {
+    const S = struct {
+        fn f() void {}
+        fn g() bool {
+            return true;
+        }
+    };
+    testing.expectEqual(@as(?type, void), ReturnType(S.f));
+    testing.expectEqual(@as(?type, bool), ReturnType(S.g));
+    testing.expectEqual(@as(?type, null), ReturnType(cast));
+}
