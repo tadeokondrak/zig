@@ -58,24 +58,24 @@ pub const StackTrace = struct {
     index: usize,
     instruction_addresses: []usize,
 
-    pub fn format(
-        self: StackTrace,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-        defer arena.deinit();
-        const debug_info = std.debug.getSelfDebugInfo() catch |err| {
-            return writer.print("\nUnable to print stack trace: Unable to open debug info: {}\n", .{@errorName(err)});
-        };
-        const tty_config = std.debug.detectTTYConfig();
-        try writer.writeAll("\n");
-        std.debug.writeStackTrace(self, writer, &arena.allocator, debug_info, tty_config) catch |err| {
-            try writer.print("Unable to print stack trace: {}\n", .{@errorName(err)});
-        };
-        try writer.writeAll("\n");
-    }
+//    pub fn format(
+//        self: StackTrace,
+//        comptime fmt: []const u8,
+//        options: std.fmt.FormatOptions,
+//        writer: anytype,
+//    ) !void {
+//        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+//        defer arena.deinit();
+//        const debug_info = std.debug.getSelfDebugInfo() catch |err| {
+//            return writer.print("\nUnable to print stack trace: Unable to open debug info: {}\n", .{@errorName(err)});
+//        };
+//        const tty_config = std.debug.detectTTYConfig();
+//        try writer.writeAll("\n");
+//        std.debug.writeStackTrace(self, writer, &arena.allocator, debug_info, tty_config) catch |err| {
+//            try writer.print("Unable to print stack trace: {}\n", .{@errorName(err)});
+//        };
+//        try writer.writeAll("\n");
+//    }
 };
 
 /// This data structure is used by the Zig language code generation and
@@ -457,60 +457,60 @@ pub const Version = struct {
         min: Version,
         max: Version,
 
-        pub fn includesVersion(self: Range, ver: Version) bool {
-            if (self.min.order(ver) == .gt) return false;
-            if (self.max.order(ver) == .lt) return false;
-            return true;
-        }
-
-        /// Checks if system is guaranteed to be at least `version` or older than `version`.
-        /// Returns `null` if a runtime check is required.
-        pub fn isAtLeast(self: Range, ver: Version) ?bool {
-            if (self.min.order(ver) != .lt) return true;
-            if (self.max.order(ver) == .lt) return false;
-            return null;
-        }
+//        pub fn includesVersion(self: Range, ver: Version) bool {
+//            if (self.min.order(ver) == .gt) return false;
+//            if (self.max.order(ver) == .lt) return false;
+//            return true;
+//        }
+//
+//        /// Checks if system is guaranteed to be at least `version` or older than `version`.
+//        /// Returns `null` if a runtime check is required.
+//        pub fn isAtLeast(self: Range, ver: Version) ?bool {
+//            if (self.min.order(ver) != .lt) return true;
+//            if (self.max.order(ver) == .lt) return false;
+//            return null;
+//        }
     };
 
-    pub fn order(lhs: Version, rhs: Version) std.math.Order {
-        if (lhs.major < rhs.major) return .lt;
-        if (lhs.major > rhs.major) return .gt;
-        if (lhs.minor < rhs.minor) return .lt;
-        if (lhs.minor > rhs.minor) return .gt;
-        if (lhs.patch < rhs.patch) return .lt;
-        if (lhs.patch > rhs.patch) return .gt;
-        return .eq;
-    }
-
-    pub fn parse(text: []const u8) !Version {
-        var it = std.mem.split(text, ".");
-        return Version{
-            .major = try std.fmt.parseInt(u32, it.next() orelse return error.InvalidVersion, 10),
-            .minor = try std.fmt.parseInt(u32, it.next() orelse "0", 10),
-            .patch = try std.fmt.parseInt(u32, it.next() orelse "0", 10),
-        };
-    }
-
-    pub fn format(
-        self: Version,
-        comptime fmt: []const u8,
-        options: std.fmt.FormatOptions,
-        out_stream: anytype,
-    ) !void {
-        if (fmt.len == 0) {
-            if (self.patch == 0) {
-                if (self.minor == 0) {
-                    return std.fmt.format(out_stream, "{}", .{self.major});
-                } else {
-                    return std.fmt.format(out_stream, "{}.{}", .{ self.major, self.minor });
-                }
-            } else {
-                return std.fmt.format(out_stream, "{}.{}.{}", .{ self.major, self.minor, self.patch });
-            }
-        } else {
-            @compileError("Unknown format string: '" ++ fmt ++ "'");
-        }
-    }
+//    pub fn order(lhs: Version, rhs: Version) std.math.Order {
+//        if (lhs.major < rhs.major) return .lt;
+//        if (lhs.major > rhs.major) return .gt;
+//        if (lhs.minor < rhs.minor) return .lt;
+//        if (lhs.minor > rhs.minor) return .gt;
+//        if (lhs.patch < rhs.patch) return .lt;
+//        if (lhs.patch > rhs.patch) return .gt;
+//        return .eq;
+//    }
+//
+//    pub fn parse(text: []const u8) !Version {
+//        var it = std.mem.split(text, ".");
+//        return Version{
+//            .major = try std.fmt.parseInt(u32, it.next() orelse return error.InvalidVersion, 10),
+//            .minor = try std.fmt.parseInt(u32, it.next() orelse "0", 10),
+//            .patch = try std.fmt.parseInt(u32, it.next() orelse "0", 10),
+//        };
+//    }
+//
+//    pub fn format(
+//        self: Version,
+//        comptime fmt: []const u8,
+//        options: std.fmt.FormatOptions,
+//        out_stream: anytype,
+//    ) !void {
+//        if (fmt.len == 0) {
+//            if (self.patch == 0) {
+//                if (self.minor == 0) {
+//                    return std.fmt.format(out_stream, "{}", .{self.major});
+//                } else {
+//                    return std.fmt.format(out_stream, "{}.{}", .{ self.major, self.minor });
+//                }
+//            } else {
+//                return std.fmt.format(out_stream, "{}.{}.{}", .{ self.major, self.minor, self.patch });
+//            }
+//        } else {
+//            @compileError("Unknown format string: '" ++ fmt ++ "'");
+//        }
+//    }
 };
 
 /// This data structure is used by the Zig language code generation and
@@ -582,7 +582,7 @@ pub const panic: PanicFn = if (@hasDecl(root, "panic")) root.panic else default_
 
 /// This function is used by the Zig language code generation and
 /// therefore must be kept in sync with the compiler implementation.
-pub fn default_panic(msg: []const u8, error_return_trace: ?*StackTrace) noreturn {
+pub const default_panic = fn(msg: []const u8, error_return_trace: ?*StackTrace) noreturn {
     @setCold(true);
     if (@hasDecl(root, "os") and @hasDecl(root.os, "panic")) {
         root.os.panic(msg, error_return_trace);
@@ -607,7 +607,7 @@ pub fn default_panic(msg: []const u8, error_return_trace: ?*StackTrace) noreturn
             std.debug.panicExtra(error_return_trace, first_trace_addr, "{}", .{msg});
         },
     }
-}
+};
 
 const std = @import("std.zig");
 const root = @import("root");
