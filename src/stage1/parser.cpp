@@ -591,7 +591,7 @@ static AstNodeContainerDecl ast_parse_container_members(ParseContext *pc) {
         }
 
         if (visib_token != nullptr) {
-            ast_error(pc, peek_token(pc), "expected function or variable declaration after pub");
+            ast_error(pc, peek_token(pc), "expected variable declaration after pub");
         }
 
         Token *comptime_token = eat_token_if(pc, TokenIdKeywordCompTime);
@@ -659,121 +659,48 @@ static AstNode *ast_parse_top_level_comptime(ParseContext *pc) {
 }
 
 // TopLevelDecl
-//     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE? / (KEYWORD_inline / KEYWORD_noinline))? FnProto (SEMICOLON / Block)
-//      / (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE?)? KEYWORD_threadlocal? VarDecl
+//     <- (KEYWORD_export / KEYWORD_extern STRINGLITERALSINGLE?)? KEYWORD_threadlocal? VarDecl
 //      / KEYWORD_use Expr SEMICOLON
 static AstNode *ast_parse_top_level_decl(ParseContext *pc, VisibMod visib_mod, Buf *doc_comments) {
     Token *first = eat_token_if(pc, TokenIdKeywordExport);
     if (first == nullptr)
         first = eat_token_if(pc, TokenIdKeywordExtern);
-    if (first == nullptr)
-        first = eat_token_if(pc, TokenIdKeywordInline);
-    if (first == nullptr)
-        first = eat_token_if(pc, TokenIdKeywordNoInline);
-    if (first != nullptr) {
-        Token *lib_name = nullptr;
-        if (first->id == TokenIdKeywordExtern)
-            lib_name = eat_token_if(pc, TokenIdStringLiteral);
 
-        if (first->id != TokenIdKeywordInline && first->id != TokenIdKeywordNoInline) {
-            Token *thread_local_kw = eat_token_if(pc, TokenIdKeywordThreadLocal);
-            AstNode *var_decl = ast_parse_var_decl(pc);
-            if (var_decl != nullptr) {
-                assert(var_decl->type == NodeTypeVariableDeclaration);
-                if (first->id == TokenIdKeywordExtern && var_decl->data.variable_declaration.expr != nullptr) {
-                    ast_error(pc, first, "extern variables have no initializers");
-                }
-                var_decl->line = first->start_line;
-                var_decl->column = first->start_column;
-                var_decl->data.variable_declaration.threadlocal_tok = thread_local_kw;
-                var_decl->data.variable_declaration.visib_mod = visib_mod;
-                var_decl->data.variable_declaration.doc_comments = *doc_comments;
-                var_decl->data.variable_declaration.is_extern = first->id == TokenIdKeywordExtern;
-                var_decl->data.variable_declaration.is_export = first->id == TokenIdKeywordExport;
-                var_decl->data.variable_declaration.lib_name = token_buf(lib_name);
-                return var_decl;
-            }
-
-            if (thread_local_kw != nullptr)
-                put_back_token(pc);
-        }
-
-        AstNode *fn_proto = ast_parse_fn_proto(pc);
-        if (fn_proto != nullptr) {
-            AstNode *body = ast_parse_block(pc);
-            if (body == nullptr)
-                expect_token(pc, TokenIdSemicolon);
-
-            assert(fn_proto->type == NodeTypeFnProto);
-            fn_proto->line = first->start_line;
-            fn_proto->column = first->start_column;
-            fn_proto->data.fn_proto.visib_mod = visib_mod;
-            fn_proto->data.fn_proto.doc_comments = *doc_comments;
-            if (!fn_proto->data.fn_proto.is_extern)
-                fn_proto->data.fn_proto.is_extern = first->id == TokenIdKeywordExtern;
-            fn_proto->data.fn_proto.is_export = first->id == TokenIdKeywordExport;
-            switch (first->id) {
-                case TokenIdKeywordInline:
-                    fn_proto->data.fn_proto.fn_inline = FnInlineAlways;
-                    break;
-                case TokenIdKeywordNoInline:
-                    fn_proto->data.fn_proto.fn_inline = FnInlineNever;
-                    break;
-                default:
-                    fn_proto->data.fn_proto.fn_inline = FnInlineAuto;
-                    break;
-            }
-            fn_proto->data.fn_proto.lib_name = token_buf(lib_name);
-
-            AstNode *res = fn_proto;
-            if (body != nullptr) {
-                if (fn_proto->data.fn_proto.is_extern) {
-                    ast_error(pc, first, "extern functions have no body");
-                }
-                res = ast_create_node_copy_line_info(pc, NodeTypeFnDef, fn_proto);
-                res->data.fn_def.fn_proto = fn_proto;
-                res->data.fn_def.body = body;
-                fn_proto->data.fn_proto.fn_def_node = res;
-            }
-
-            return res;
-        }
-
-        ast_invalid_token_error(pc, peek_token(pc));
-    }
+    Token *lib_name = nullptr;
+    if (first != nullptr && first->id == TokenIdKeywordExtern)
+        lib_name = eat_token_if(pc, TokenIdStringLiteral);
 
     Token *thread_local_kw = eat_token_if(pc, TokenIdKeywordThreadLocal);
+
     AstNode *var_decl = ast_parse_var_decl(pc);
     if (var_decl != nullptr) {
         assert(var_decl->type == NodeTypeVariableDeclaration);
+        if (first != nullptr && first->id == TokenIdKeywordExtern &&
+            var_decl->data.variable_declaration.expr != nullptr)
+        {
+            ast_error(pc, first, "extern variables have no initializers");
+        }
+        if (first != nullptr) {
+            var_decl->line = first->start_line;
+            var_decl->column = first->start_column;
+            var_decl->data.variable_declaration.is_extern = first->id == TokenIdKeywordExtern;
+            var_decl->data.variable_declaration.is_export = first->id == TokenIdKeywordExport;
+        }
+        var_decl->data.variable_declaration.threadlocal_tok = thread_local_kw;
         var_decl->data.variable_declaration.visib_mod = visib_mod;
         var_decl->data.variable_declaration.doc_comments = *doc_comments;
-        var_decl->data.variable_declaration.threadlocal_tok = thread_local_kw;
+        var_decl->data.variable_declaration.lib_name = token_buf(lib_name);
         return var_decl;
     }
 
-    if (thread_local_kw != nullptr)
+    if (first != nullptr)
         put_back_token(pc);
 
-    AstNode *fn_proto = ast_parse_fn_proto(pc);
-    if (fn_proto != nullptr) {
-        AstNode *body = ast_parse_block(pc);
-        if (body == nullptr)
-            expect_token(pc, TokenIdSemicolon);
+    if (lib_name != nullptr)
+        put_back_token(pc);
 
-        assert(fn_proto->type == NodeTypeFnProto);
-        fn_proto->data.fn_proto.visib_mod = visib_mod;
-        fn_proto->data.fn_proto.doc_comments = *doc_comments;
-        AstNode *res = fn_proto;
-        if (body != nullptr) {
-            res = ast_create_node_copy_line_info(pc, NodeTypeFnDef, fn_proto);
-            res->data.fn_def.fn_proto = fn_proto;
-            res->data.fn_def.body = body;
-            fn_proto->data.fn_proto.fn_def_node = res;
-        }
-
-        return res;
-    }
+    if (thread_local_kw != nullptr)
+        put_back_token(pc);
 
     Token *usingnamespace = eat_token_if(pc, TokenIdKeywordUsingNamespace);
     if (usingnamespace != nullptr) {
@@ -1412,8 +1339,23 @@ static AstNode *ast_parse_while_expr(ParseContext *pc) {
     return ast_parse_while_expr_helper(pc, ast_parse_expr);
 }
 
-// CurlySuffixExpr <- TypeExpr InitList?
+// CurlySuffixExpr
+//     <- FnProto Block
+//     <- TypeExpr InitList?
 static AstNode *ast_parse_curly_suffix_expr(ParseContext *pc) {
+    AstNode *fn_proto = ast_parse_fn_proto(pc);
+    if (fn_proto != nullptr) {
+        AstNode *body = ast_parse_block(pc);
+        if (body != nullptr) {
+            AstNode *fn_def = ast_create_node_copy_line_info(pc, NodeTypeFnDef, fn_proto);
+            fn_def->data.fn_def.fn_proto = fn_proto;
+            fn_def->data.fn_def.body = body;
+            fn_proto->data.fn_proto.fn_def_node = fn_def;
+            return fn_def;
+        }
+        return fn_proto;
+    }
+
     AstNode *type_expr = ast_parse_type_expr(pc);
     if (type_expr == nullptr)
         return nullptr;
