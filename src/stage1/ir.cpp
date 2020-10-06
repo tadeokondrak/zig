@@ -10176,6 +10176,10 @@ static IrInstSrc *ir_gen_suspend(IrBuilderSrc *irb, Scope *parent_scope, AstNode
     return ir_mark_gen(ir_build_suspend_finish_src(irb, parent_scope, node, begin));
 }
 
+static IrInstSrc *ir_gen_fn_def(IrBuilderSrc *irb, Scope *scope, AstNode *node) {
+    zig_panic("ir_gen_fn_def");
+}
+
 static IrInstSrc *ir_gen_node_raw(IrBuilderSrc *irb, AstNode *node, Scope *scope,
         LVal lval, ResultLoc *result_loc)
 {
@@ -10188,7 +10192,6 @@ static IrInstSrc *ir_gen_node_raw(IrBuilderSrc *irb, AstNode *node, Scope *scope
         case NodeTypeSwitchRange:
         case NodeTypeStructField:
         case NodeTypeErrorSetField:
-        case NodeTypeFnDef:
         case NodeTypeTestDecl:
             zig_unreachable();
         case NodeTypeBlock:
@@ -10326,6 +10329,8 @@ static IrInstSrc *ir_gen_node_raw(IrBuilderSrc *irb, AstNode *node, Scope *scope
         case NodeTypeAnyTypeField:
             return ir_lval_wrap(irb, scope,
                     ir_build_const_type(irb, scope, node, irb->codegen->builtin_types.entry_anytype), lval, result_loc);
+        case NodeTypeFnDef:
+            return ir_lval_wrap(irb, scope, ir_gen_fn_def(irb, scope, node), lval, result_loc);
     }
     zig_unreachable();
 }
