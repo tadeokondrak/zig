@@ -485,6 +485,7 @@ static uint32_t anal_dump_get_decl_id(AnalDumpCtx *ctx, Tld *tld) {
                 }
                 break;
             }
+            /*
             case TldIdFn: {
                 TldFn *tld_fn = reinterpret_cast<TldFn *>(tld);
                 ZigFn *fn = tld_fn->fn_entry;
@@ -494,6 +495,7 @@ static uint32_t anal_dump_get_decl_id(AnalDumpCtx *ctx, Tld *tld) {
                 }
                 break;
             }
+            */
             default:
                 break;
         }
@@ -587,7 +589,7 @@ static void anal_dump_pkg(AnalDumpCtx *ctx, ZigPackage *pkg) {
 static void anal_dump_decl(AnalDumpCtx *ctx, Tld *tld) {
     JsonWriter *jw = &ctx->jw;
 
-    bool make_obj = tld->id == TldIdVar || tld->id == TldIdFn;
+    bool make_obj = tld->id == TldIdVar;
     if (make_obj) {
         jw_array_elem(jw);
         jw_begin_object(jw);
@@ -630,6 +632,7 @@ static void anal_dump_decl(AnalDumpCtx *ctx, Tld *tld) {
             }
             break;
         }
+        /*
         case TldIdFn: {
             TldFn *tld_fn = reinterpret_cast<TldFn *>(tld);
             ZigFn *fn = tld_fn->fn_entry;
@@ -646,6 +649,7 @@ static void anal_dump_decl(AnalDumpCtx *ctx, Tld *tld) {
             }
             break;
         }
+        */
         default:
             break;
     }

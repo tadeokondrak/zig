@@ -1837,6 +1837,7 @@ ZigType *get_auto_err_set_type(CodeGen *g, ZigFn *fn_entry) {
     return err_set_type;
 }
 
+/*
 static ZigType *analyze_fn_type(CodeGen *g, AstNode *proto_node, Scope *child_scope, ZigFn *fn_entry,
         CallingConvention cc)
 {
@@ -2036,6 +2037,7 @@ static ZigType *analyze_fn_type(CodeGen *g, AstNode *proto_node, Scope *child_sc
 
     return get_fn_type(g, &fn_type_id);
 }
+*/
 
 bool is_valid_return_type(ZigType* type) {
     switch (type->id) {
@@ -3436,6 +3438,7 @@ void append_namespace_qualification(CodeGen *g, Buf *buf, ZigType *container_typ
     buf_append_char(buf, NAMESPACE_SEP_CHAR);
 }
 
+/*
 static void get_fully_qualified_decl_name(CodeGen *g, Buf *buf, Tld *tld, bool is_test) {
     buf_resize(buf, 0);
 
@@ -3453,6 +3456,7 @@ static void get_fully_qualified_decl_name(CodeGen *g, Buf *buf, Tld *tld, bool i
         buf_append_buf(buf, tld->name);
     }
 }
+*/
 
 static ZigFn *create_fn_raw(CodeGen *g, FnInline inline_value) {
     ZigFn *fn_entry = heap::c_allocator.create<ZigFn>();
@@ -3525,6 +3529,7 @@ void add_fn_export(CodeGen *g, ZigFn *fn_table_entry, const char *symbol_name, G
     fn_export->linkage = linkage;
 }
 
+/*
 static void resolve_decl_fn(CodeGen *g, TldFn *tld_fn) {
     AstNode *source_node = tld_fn->base.source_node;
     if (source_node->type == NodeTypeFnProto) {
@@ -3657,6 +3662,7 @@ static void resolve_decl_fn(CodeGen *g, TldFn *tld_fn) {
         zig_unreachable();
     }
 }
+*/
 
 static void resolve_decl_comptime(CodeGen *g, TldCompTime *tld_comptime) {
     assert(tld_comptime->base.source_node->type == NodeTypeCompTime);
@@ -3670,7 +3676,7 @@ static void add_top_level_decl(CodeGen *g, ScopeDecls *decls_scope, Tld *tld) {
     if (tld->id == TldIdVar) {
         assert(tld->source_node->type == NodeTypeVariableDeclaration);
         is_export = tld->source_node->data.variable_declaration.is_export;
-    } else if (tld->id == TldIdFn) {
+    } /*else if (tld->id == TldIdFn) {
         assert(tld->source_node->type == NodeTypeFnProto);
         is_export = tld->source_node->data.fn_proto.is_export;
 
@@ -3686,7 +3692,7 @@ static void add_top_level_decl(CodeGen *g, ScopeDecls *decls_scope, Tld *tld) {
             add_node_error(g, tld->source_node, buf_sprintf("non-extern function is variadic"));
             return;
         }
-    } else if (tld->id == TldIdUsingNamespace) {
+    } */else if (tld->id == TldIdUsingNamespace) {
         g->resolve_queue.append(tld);
     }
     if (is_export) {
@@ -3743,9 +3749,12 @@ static void preview_test_decl(CodeGen *g, AstNode *node, ScopeDecls *decls_scope
         return;
     }
 
+    zig_panic("TODO preview_test_decl");
+/*
     TldFn *tld_fn = heap::c_allocator.create<TldFn>();
     init_tld(&tld_fn->base, TldIdFn, test_name, VisibModPrivate, node, &decls_scope->base);
     g->resolve_queue.append(&tld_fn->base);
+*/
 }
 
 static void preview_comptime_decl(CodeGen *g, AstNode *node, ScopeDecls *decls_scope) {
@@ -3809,6 +3818,8 @@ void scan_decls(CodeGen *g, ScopeDecls *decls_scope, AstNode *node) {
                     break;
                 }
 
+                zig_panic("TODO scan_decls");
+                /*
                 VisibMod visib_mod = node->data.fn_proto.visib_mod;
                 TldFn *tld_fn = heap::c_allocator.create<TldFn>();
                 init_tld(&tld_fn->base, TldIdFn, fn_name, visib_mod, node, &decls_scope->base);
@@ -3816,6 +3827,7 @@ void scan_decls(CodeGen *g, ScopeDecls *decls_scope, AstNode *node) {
                 add_top_level_decl(g, decls_scope, &tld_fn->base);
 
                 break;
+                */
             }
         case NodeTypeUsingNamespace: {
             VisibMod visib_mod = node->data.using_namespace.visib_mod;
@@ -4272,6 +4284,10 @@ void resolve_top_level_decl(CodeGen *g, Tld *tld, AstNode *source_node, bool all
             tld->resolution = allow_lazy ? TldResolutionOkLazy : TldResolutionOk;
             break;
         }
+        case TldIdTest: {
+            zig_panic("TODO resolve_top_level_decl");
+        }
+        /*
         case TldIdFn: {
             TldFn *tld_fn = (TldFn *)tld;
             resolve_decl_fn(g, tld_fn);
@@ -4279,6 +4295,7 @@ void resolve_top_level_decl(CodeGen *g, Tld *tld, AstNode *source_node, bool all
             tld->resolution = TldResolutionOk;
             break;
         }
+        */
         case TldIdContainer: {
             TldContainer *tld_container = (TldContainer *)tld;
             resolve_decl_container(g, tld_container);

@@ -406,6 +406,8 @@ static LLVMValueRef make_fn_llvm_value(CodeGen *g, ZigFn *fn) {
                     }
                 }
             } else {
+                zig_panic("TODO make_fn_llvm_value");
+                /*
                 assert(entry->value->id == TldIdFn);
                 TldFn *tld_fn = reinterpret_cast<TldFn *>(entry->value);
                 // Make the raw_type_ref populated
@@ -414,6 +416,7 @@ static LLVMValueRef make_fn_llvm_value(CodeGen *g, ZigFn *fn) {
                         tld_fn->fn_entry->raw_type_ref);
                 llvm_fn = LLVMConstBitCast(tld_fn->fn_entry->llvm_value, LLVMPointerType(fn_llvm_type, fn_addrspace));
                 return llvm_fn;
+                */
             }
         }
     } else {

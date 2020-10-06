@@ -555,7 +555,7 @@ enum GlobalLinkageId {
 
 enum TldId {
     TldIdVar,
-    TldIdFn,
+    TldIdTest,
     TldIdContainer,
     TldIdCompTime,
     TldIdUsingNamespace,
@@ -586,13 +586,6 @@ struct TldVar {
     ZigVar *var;
     Buf *extern_lib_name;
     bool analyzing_type; // flag to detect dependency loops
-};
-
-struct TldFn {
-    Tld base;
-
-    ZigFn *fn_entry;
-    Buf *extern_lib_name;
 };
 
 struct TldContainer {

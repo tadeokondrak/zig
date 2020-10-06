@@ -13479,6 +13479,7 @@ static IrInstGen *ir_finish_anal(IrAnalyze *ira, IrInstGen *instruction) {
     return instruction;
 }
 
+/*
 static IrInstGen *ir_const_fn(IrAnalyze *ira, IrInst *source_instr, ZigFn *fn_entry) {
     IrInstGen *result = ir_const(ira, source_instr, fn_entry->type_entry);
     result->value->special = ConstValSpecialStatic;
@@ -13487,6 +13488,7 @@ static IrInstGen *ir_const_fn(IrAnalyze *ira, IrInst *source_instr, ZigFn *fn_en
     result->value->data.x_ptr.special = ConstPtrSpecialFunction;
     return result;
 }
+*/
 
 static IrInstGen *ir_const_bound_fn(IrAnalyze *ira, IrInst *src_inst, ZigFn *fn_entry, IrInstGen *first_arg,
         IrInst *first_arg_src)
@@ -18880,6 +18882,8 @@ static IrInstGen *ir_analyze_instruction_export(IrAnalyze *ira, IrInstSrcExport 
     // It's not clear how all the different types are supposed to be handled.
     // Need comprehensive tests for exporting one thing in one file and declaring an extern var
     // in another file.
+    zig_panic("TODO ir_analyze_instruction_export");
+    /*
     TldFn *tld_fn = heap::c_allocator.create<TldFn>();
     tld_fn->base.id = TldIdFn;
     tld_fn->base.source_node = instruction->base.base.source_node;
@@ -19076,6 +19080,7 @@ static IrInstGen *ir_analyze_instruction_export(IrAnalyze *ira, IrInstSrcExport 
     }
 
     return ir_const_void(ira, &instruction->base.base);
+    */
 }
 
 static bool exec_has_err_ret_trace(CodeGen *g, IrExecutableSrc *exec) {
@@ -22328,7 +22333,7 @@ static IrInstGen *ir_analyze_container_member_access_inner(IrAnalyze *ira,
         assert(container_scope != nullptr);
         auto tld = find_container_decl(ira->codegen, container_scope, field_name);
         if (tld) {
-            if (tld->id == TldIdFn) {
+            /*if (tld->id == TldIdFn) {
                 resolve_top_level_decl(ira->codegen, tld, source_instr->source_node, false);
                 if (tld->resolution == TldResolutionInvalid)
                     return ira->codegen->invalid_inst_gen;
@@ -22354,7 +22359,7 @@ static IrInstGen *ir_analyze_container_member_access_inner(IrAnalyze *ira,
                 IrInstGen *bound_fn_value = ir_const_bound_fn(ira, source_instr, fn_entry, container_ptr,
                         container_ptr_src);
                 return ir_get_ref(ira, source_instr, bound_fn_value, true, false);
-            } else if (tld->id == TldIdVar) {
+            } else*/ if (tld->id == TldIdVar) {
                 resolve_top_level_decl(ira->codegen, tld, source_instr->source_node, false);
                 if (tld->resolution == TldResolutionInvalid)
                     return ira->codegen->invalid_inst_gen;
@@ -22694,6 +22699,7 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
         case TldIdContainer:
         case TldIdCompTime:
         case TldIdUsingNamespace:
+        case TldIdTest:
             zig_unreachable();
         case TldIdVar: {
             TldVar *tld_var = (TldVar *)tld;
@@ -22707,6 +22713,7 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
 
             return ir_get_var_ptr(ira, source_instruction, var);
         }
+        /*
         case TldIdFn: {
             TldFn *tld_fn = (TldFn *)tld;
             ZigFn *fn_entry = tld_fn->fn_entry;
@@ -22722,6 +22729,7 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
             IrInstGen *fn_inst = ir_const_fn(ira, source_instruction, fn_entry);
             return ir_get_ref(ira, source_instruction, fn_inst, true, false);
         }
+        */
     }
     zig_unreachable();
 }
@@ -24833,14 +24841,8 @@ static Error ir_make_type_info_decls(IrAnalyze *ira, IrInst* source_instr, ZigVa
     decl_it = decls_scope->decl_table.entry_iterator();
     while ((curr_entry = decl_it.next()) != nullptr) {
         // Skip comptime blocks and test functions.
-        if (curr_entry->value->id == TldIdCompTime)
+        if (curr_entry->value->id == TldIdCompTime || curr_entry->value->id == TldIdTest)
             continue;
-
-        if (curr_entry->value->id == TldIdFn) {
-            ZigFn *fn_entry = ((TldFn *)curr_entry->value)->fn_entry;
-            if (fn_entry->is_test)
-                continue;
-        }
 
         declaration_count += 1;
     }
@@ -24858,13 +24860,8 @@ static Error ir_make_type_info_decls(IrAnalyze *ira, IrInst* source_instr, ZigVa
     int declaration_index = 0;
     while ((curr_entry = decl_it.next()) != nullptr) {
         // Skip comptime blocks and test functions.
-        if (curr_entry->value->id == TldIdCompTime) {
+        if (curr_entry->value->id == TldIdCompTime || curr_entry->value->id == TldIdTest)
             continue;
-        } else if (curr_entry->value->id == TldIdFn) {
-            ZigFn *fn_entry = ((TldFn *)curr_entry->value)->fn_entry;
-            if (fn_entry->is_test)
-                continue;
-        }
 
         ZigValue *declaration_val = &declaration_array->data.x_array.data.s_none.elements[declaration_index];
 
@@ -24912,6 +24909,11 @@ static Error ir_make_type_info_decls(IrAnalyze *ira, IrInst* source_instr, ZigVa
 
                     break;
                 }
+            case TldIdTest:
+                {
+                    zig_panic("TODO ir_make_type_info_decls");
+                }
+            /*
             case TldIdFn:
                 {
                     // 2: Data.Fn: Data.FnDecl
@@ -25005,6 +25007,7 @@ static Error ir_make_type_info_decls(IrAnalyze *ira, IrInst* source_instr, ZigVa
                     inner_fields[2]->data.x_union.payload = fn_decl_val;
                     break;
                 }
+            */
             case TldIdContainer:
                 {
                     ZigType *type_entry = ((TldContainer *)curr_entry->value)->type_entry;
