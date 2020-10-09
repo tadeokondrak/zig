@@ -1212,6 +1212,7 @@ Error type_val_resolve_zero_bits(CodeGen *g, ZigValue *type_val, ZigType *parent
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdPtrType: {
             LazyValuePtrType *lazy_ptr_type = reinterpret_cast<LazyValuePtrType *>(type_val->data.x_lazy);
@@ -1273,6 +1274,7 @@ Error type_val_resolve_is_opaque_type(CodeGen *g, ZigValue *type_val, bool *is_o
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdSliceType:
         case LazyValueIdPtrType:
@@ -1295,6 +1297,7 @@ static ReqCompTime type_val_resolve_requires_comptime(CodeGen *g, ZigValue *type
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdSliceType: {
             LazyValueSliceType *lazy_slice_type = reinterpret_cast<LazyValueSliceType *>(type_val->data.x_lazy);
@@ -1369,6 +1372,7 @@ start_over:
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdSliceType: {
             LazyValueSliceType *lazy_slice_type = reinterpret_cast<LazyValueSliceType *>(type_val->data.x_lazy);
@@ -1437,6 +1441,7 @@ Error type_val_resolve_abi_align(CodeGen *g, AstNode *source_node, ZigValue *typ
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdSliceType:
         case LazyValueIdPtrType:
@@ -1480,6 +1485,7 @@ static OnePossibleValue type_val_resolve_has_one_possible_value(CodeGen *g, ZigV
         case LazyValueIdAlignOf:
         case LazyValueIdSizeOf:
         case LazyValueIdTypeInfoDecls:
+        case LazyValueIdUnresolvedVar:
             zig_unreachable();
         case LazyValueIdSliceType: // it has the len field
         case LazyValueIdOptType: // it has the optional bit
@@ -3746,6 +3752,7 @@ static void add_top_level_decl(CodeGen *g, ScopeDecls *decls_scope, Tld *tld) {
             if (other_tld->id == TldIdVar) {
                 ZigVar *var = reinterpret_cast<TldVar *>(other_tld)->var;
                 if (var != nullptr && var->var_type != nullptr && type_is_invalid(var->var_type)) {
+                    assert(g->errors.length > 0);
                     return; // already reported compile error
                 }
             }
@@ -3981,16 +3988,14 @@ ZigType *validate_var_type(CodeGen *g, AstNodeVariableDeclaration *source_node, 
     zig_unreachable();
 }
 
-// Set name to nullptr to make the variable anonymous (not visible to programmer).
-// TODO merge with definition of add_local_var in ir.cpp
-ZigVar *add_variable(CodeGen *g, AstNode *source_node, Scope *parent_scope, Buf *name,
-    bool is_const, ZigValue *const_value, Tld *src_tld, ZigType *var_type)
+static void init_variable(CodeGen *g, ZigVar *variable_entry, AstNode *source_node, Scope *parent_scope,
+    Buf *name, bool is_const, ZigValue *const_value, Tld *src_tld, ZigType *var_type)
 {
     Error err;
+    assert(variable_entry != nullptr);
     assert(const_value != nullptr);
     assert(var_type != nullptr);
 
-    ZigVar *variable_entry = heap::c_allocator.create<ZigVar>();
     variable_entry->const_value = const_value;
     variable_entry->var_type = var_type;
     variable_entry->parent_scope = parent_scope;
@@ -4006,7 +4011,7 @@ ZigVar *add_variable(CodeGen *g, AstNode *source_node, Scope *parent_scope, Buf 
         variable_entry->align_bytes = get_abi_alignment(g, var_type);
 
         ZigVar *existing_var = find_variable(g, parent_scope, name, nullptr);
-        if (existing_var && !existing_var->shadowable) {
+        if (existing_var && !existing_var->shadowable && existing_var != variable_entry) {
             if (existing_var->var_type == nullptr || !type_is_invalid(existing_var->var_type)) {
                 ErrorMsg *msg = add_node_error(g, source_node,
                         buf_sprintf("redeclaration of variable '%s'", buf_ptr(name)));
@@ -4061,8 +4066,16 @@ ZigVar *add_variable(CodeGen *g, AstNode *source_node, Scope *parent_scope, Buf 
     variable_entry->gen_is_const = is_const;
     variable_entry->decl_node = source_node;
     variable_entry->child_scope = child_scope;
+}
 
-
+// Set name to nullptr to make the variable anonymous (not visible to programmer).
+// TODO merge with definition of add_local_var in ir.cpp
+ZigVar *add_variable(CodeGen *g, AstNode *source_node, Scope *parent_scope, Buf *name,
+    bool is_const, ZigValue *const_value, Tld *src_tld, ZigType *var_type)
+{
+    ZigVar *variable_entry = heap::c_allocator.create<ZigVar>();
+    init_variable(g, variable_entry, source_node, parent_scope, name,
+        is_const, const_value, src_tld, var_type);
     return variable_entry;
 }
 
@@ -4097,6 +4110,8 @@ static void resolve_decl_var(CodeGen *g, TldVar *tld_var, bool allow_lazy) {
             explicit_type = validate_var_type(g, var_decl, proposed_type);
         }
     }
+
+    tld_var->var = heap::c_allocator.create<ZigVar>();
 
     assert(!is_export || !is_extern);
 
@@ -4144,7 +4159,7 @@ static void resolve_decl_var(CodeGen *g, TldVar *tld_var, bool allow_lazy) {
 
     ZigValue *init_val = (init_value != nullptr) ? init_value : create_const_runtime(g, type);
 
-    tld_var->var = add_variable(g, source_node, tld_var->base.parent_scope, var_decl->symbol,
+    init_variable(g, tld_var->var, source_node, tld_var->base.parent_scope, var_decl->symbol,
             is_const, init_val, &tld_var->base, type);
     tld_var->var->is_thread_local = is_thread_local;
 

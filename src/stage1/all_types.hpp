@@ -383,6 +383,7 @@ enum LazyValueId {
     LazyValueIdErrUnionType,
     LazyValueIdArrayType,
     LazyValueIdTypeInfoDecls,
+    LazyValueIdUnresolvedVar,
 };
 
 struct LazyValue {
@@ -482,6 +483,12 @@ struct LazyValueErrUnionType {
     Buf *type_name;
 };
 
+struct LazyValueUnresolvedVar {
+    LazyValue base;
+
+    struct TldVar *tld_var;
+};
+
 struct ZigValue {
     ZigType *type;
     ConstValSpecial special;
@@ -562,6 +569,7 @@ enum TldId {
 
 enum TldResolution {
     TldResolutionUnresolved,
+    TldResolutionLLVMFwdDecl,
     TldResolutionResolving,
     TldResolutionInvalid,
     TldResolutionOkLazy,

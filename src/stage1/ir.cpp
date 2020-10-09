@@ -6071,8 +6071,6 @@ static void populate_invalid_variable_in_scope(CodeGen *g, Scope *scope, AstNode
     TldVar *tld_var = heap::c_allocator.create<TldVar>();
     init_tld(&tld_var->base, TldIdVar, var_name, VisibModPub, node, &scope_decls->base);
     tld_var->base.resolution = TldResolutionInvalid;
-    tld_var->var = add_variable(g, node, &scope_decls->base, var_name, false,
-            g->invalid_inst_gen->value, &tld_var->base, g->builtin_types.entry_invalid);
     scope_decls->decl_table.put(var_name, &tld_var->base);
 }
 
@@ -22683,13 +22681,24 @@ static IrInstGen *ir_error_dependency_loop(IrAnalyze *ira, IrInst* source_instr)
     return ira->codegen->invalid_inst_gen;
 }
 
+static IrInstGen *ir_get_unresolved_tld_var(IrAnalyze *ira, IrInst *source_instr, TldVar *tld_var) {
+    LazyValueUnresolvedVar *lazy_val = heap::c_allocator.create<LazyValueUnresolvedVar>();
+    lazy_val->base.id = LazyValueIdUnresolvedVar;
+    lazy_val->tld_var = tld_var;
+    ZigValue *result_val = heap::c_allocator.create<ZigValue>();
+    result_val->special = ConstValSpecialLazy;
+    result_val->type = ira->codegen->builtin_types.entry_unreachable;
+    result_val->data.x_lazy = &lazy_val->base;
+    IrInstGen *result = ir_const(ira, source_instr, result_val->type);
+    result->value = result_val;
+    return result;
+}
+
 static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction, Tld *tld) {
     resolve_top_level_decl(ira->codegen, tld, source_instruction->source_node, true);
     if (tld->resolution == TldResolutionInvalid) {
         return ira->codegen->invalid_inst_gen;
     }
-    if (tld->resolution == TldResolutionResolving)
-        return ir_error_dependency_loop(ira, source_instruction);
 
     switch (tld->id) {
         case TldIdContainer:
@@ -22698,17 +22707,26 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
             zig_unreachable();
         case TldIdVar: {
             TldVar *tld_var = (TldVar *)tld;
-            ZigVar *var = tld_var->var;
-            assert(var != nullptr);
+
+            if (tld->resolution == TldResolutionResolving) {
+                assert(tld_var->var == nullptr);
+                return ir_get_unresolved_tld_var(ira, source_instruction, tld_var);
+            }
+
+            if (tld_var->var == nullptr)
+                return ira->codegen->invalid_inst_gen;
 
             if (tld_var->extern_lib_name != nullptr) {
-                add_link_lib_symbol(ira, tld_var->extern_lib_name, buf_create_from_str(var->name),
+                add_link_lib_symbol(ira, tld_var->extern_lib_name, buf_create_from_str(tld_var->var->name),
                         source_instruction->source_node);
             }
 
-            return ir_get_var_ptr(ira, source_instruction, var);
+            return ir_get_var_ptr(ira, source_instruction, tld_var->var);
         }
         case TldIdFn: {
+            if (tld->resolution == TldResolutionResolving)
+                return ir_error_dependency_loop(ira, source_instruction);
+
             TldFn *tld_fn = (TldFn *)tld;
             ZigFn *fn_entry = tld_fn->fn_entry;
             assert(fn_entry->type_entry != nullptr);
@@ -32911,6 +32929,14 @@ static Error ir_resolve_lazy_raw(AstNode *source_node, ZigValue *val) {
 
             // We can't free the lazy value here, because multiple other ZigValues might be pointing to it.
             return ErrorNone;
+        }
+        case LazyValueIdUnresolvedVar: {
+            LazyValueUnresolvedVar *lazy_unresolved_var =
+                reinterpret_cast<LazyValueUnresolvedVar *>(val->data.x_lazy);
+            ZigVar *var = lazy_unresolved_var->tld_var->var;
+            if (var == nullptr)
+                zig_unreachable();
+            zig_unreachable();
         }
     }
     zig_unreachable();
