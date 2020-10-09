@@ -5466,6 +5466,10 @@ static uint32_t hash_const_val_ptr(ZigValue *const_val) {
         case ConstPtrSpecialNull:
             hash_val += (uint32_t)1486246455;
             return hash_val;
+        case ConstPtrSpecialTldVar:
+            hash_val += (uint32_t)2101599182;
+            hash_val += hash_ptr(const_val->data.x_ptr.data.tld_var.tld_var);
+            return hash_val;
     }
     zig_unreachable();
 }
@@ -6967,6 +6971,8 @@ bool const_values_equal_ptr(ZigValue *a, ZigValue *b) {
             return a->data.x_ptr.data.fn.fn_entry == b->data.x_ptr.data.fn.fn_entry;
         case ConstPtrSpecialNull:
             return true;
+        case ConstPtrSpecialTldVar:
+            return a->data.x_ptr.data.tld_var.tld_var == b->data.x_ptr.data.tld_var.tld_var;
     }
     zig_unreachable();
 }
@@ -7200,6 +7206,9 @@ static void render_const_val_ptr(CodeGen *g, Buf *buf, ZigValue *const_val, ZigT
             }
         case ConstPtrSpecialNull:
             buf_append_str(buf, "null");
+            return;
+        case ConstPtrSpecialTldVar:
+            buf_append_str(buf, "tld_var [TODO print]");
             return;
     }
     zig_unreachable();

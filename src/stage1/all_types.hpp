@@ -270,6 +270,7 @@ enum ConstPtrSpecial {
     // Not to be confused with ConstPtrSpecialBaseArray. However, it uses the same
     // union payload struct (base_array).
     ConstPtrSpecialSubArray,
+    ConstPtrSpecialTldVar,
 };
 
 enum ConstPtrMut {
@@ -318,6 +319,10 @@ struct ConstPtrValue {
         struct {
             ZigFn *fn_entry;
         } fn;
+        struct {
+            struct TldVar *tld_var;
+            struct ZigType *type;
+        } tld_var;
     } data;
 };
 
@@ -1979,6 +1984,11 @@ struct CFile {
     const char *preprocessor_only_basename;
 };
 
+struct RauwEntry {
+    LLVMValueRef before;
+    TldVar *after;
+};
+
 struct CodeGen {
     // Other code depends on this being first.
     ZigStage1 stage1;
@@ -2025,6 +2035,7 @@ struct CodeGen {
     LLVMValueRef wasm_memory_size;
     LLVMValueRef wasm_memory_grow;
     LLVMTypeRef anyframe_fn_type;
+    ZigList<RauwEntry> rauw_list;
 
     // reminder: hash tables must be initialized before use
     HashMap<Buf *, ZigType *, buf_hash, buf_eql_buf> import_table;
@@ -2735,6 +2746,7 @@ enum IrInstGenId {
     IrInstGenIdConst,
     IrInstGenIdWasmMemorySize,
     IrInstGenIdWasmMemoryGrow,
+    IrInstGenIdTldVarPtr,
 };
 
 // Common fields between IrInstSrc and IrInstGen. This allows future passes
@@ -4496,6 +4508,12 @@ struct IrInstGenVectorExtractElem {
 
     IrInstGen *vector;
     IrInstGen *index;
+};
+
+struct IrInstGenTldVarPtr {
+    IrInstGen base;
+
+    TldVar *tld_var;
 };
 
 enum ResultLocId {

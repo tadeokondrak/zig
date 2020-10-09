@@ -6798,6 +6798,8 @@ static LLVMValueRef ir_render_instruction(CodeGen *g, IrExecutableGen *executabl
             return ir_render_wasm_memory_size(g, executable, (IrInstGenWasmMemorySize *) instruction);
         case IrInstGenIdWasmMemoryGrow:
             return ir_render_wasm_memory_grow(g, executable, (IrInstGenWasmMemoryGrow *) instruction);
+        case IrInstGenIdTldVarPtr:
+            zig_unreachable();
     }
     zig_unreachable();
 }
@@ -7216,6 +7218,12 @@ static LLVMValueRef gen_const_val_ptr(CodeGen *g, ZigValue *const_val, const cha
                     get_llvm_type(g, const_val->type));
         case ConstPtrSpecialNull:
             return LLVMConstNull(get_llvm_type(g, const_val->type));
+        case ConstPtrSpecialTldVar:
+            TldVar *tld_var = const_val->data.x_ptr.data.tld_var.tld_var;
+            ZigType *type = const_val->data.x_ptr.data.tld_var.type;
+            LLVMValueRef new_val = LLVMAddGlobal(g->module, get_llvm_type(g, type), name);
+            g->rauw_list.append(RauwEntry{ new_val, tld_var });
+            return tld_var->var->value_ref;
     }
     zig_unreachable();
 }

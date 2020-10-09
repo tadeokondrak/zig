@@ -754,6 +754,8 @@ void destroy_instruction_gen(IrInstGen *inst) {
             return heap::c_allocator.destroy(reinterpret_cast<IrInstGenWasmMemorySize *>(inst));
         case IrInstGenIdWasmMemoryGrow:
             return heap::c_allocator.destroy(reinterpret_cast<IrInstGenWasmMemoryGrow *>(inst));
+        case IrInstGenIdTldVarPtr:
+            return heap::c_allocator.destroy(reinterpret_cast<IrInstGenTldVarPtr *>(inst));
     }
     zig_unreachable();
 }
@@ -867,6 +869,8 @@ static ZigValue *const_ptr_pointee_unchecked_no_isf(CodeGen *g, ZigValue *const_
         case ConstPtrSpecialDiscard:
             zig_unreachable();
         case ConstPtrSpecialFunction:
+            zig_unreachable();
+        case ConstPtrSpecialTldVar:
             zig_unreachable();
     }
     assert(result != nullptr);
@@ -1997,6 +2001,10 @@ static constexpr IrInstGenId ir_inst_id(IrInstGenWasmMemorySize *) {
 
 static constexpr IrInstGenId ir_inst_id(IrInstGenWasmMemoryGrow *) {
   return IrInstGenIdWasmMemoryGrow;
+}
+
+static constexpr IrInstGenId ir_inst_id(IrInstGenTldVarPtr *) {
+    return IrInstGenIdTldVarPtr;
 }
 
 template<typename T>
@@ -5088,6 +5096,21 @@ static IrInstGen *ir_build_wasm_memory_grow_gen(IrAnalyze *ira, IrInst *source_i
 
 static IrInstSrc *ir_build_src(IrBuilderSrc *irb, Scope *scope, AstNode *source_node) {
     IrInstSrcSrc *instruction = ir_build_instruction<IrInstSrcSrc>(irb, scope, source_node);
+
+    return &instruction->base;
+}
+
+static IrInstGen *ir_build_tld_var_ptr(IrAnalyze *ira, IrInst *source_instr, TldVar *tld_var, ZigType *type) {
+    IrInstGenTldVarPtr *instruction = ir_build_inst_gen<IrInstGenTldVarPtr>(&ira->new_irb,
+        source_instr->scope, source_instr->source_node);
+
+    instruction->base.value->special = ConstValSpecialStatic;
+    instruction->base.value->type = type;
+    instruction->base.value->data.x_ptr.special = ConstPtrSpecialTldVar;
+    instruction->base.value->data.x_ptr.mut = ConstPtrMutRuntimeVar;
+    instruction->base.value->data.x_ptr.data.tld_var.tld_var = tld_var;
+    instruction->base.value->data.x_ptr.data.tld_var.type = type;
+    instruction->tld_var = tld_var;
 
     return &instruction->base;
 }
@@ -21208,6 +21231,7 @@ static Error ir_read_const_ptr(IrAnalyze *ira, CodeGen *codegen, AstNode *source
         case ConstPtrSpecialDiscard:
         case ConstPtrSpecialHardCodedAddr:
         case ConstPtrSpecialFunction:
+        case ConstPtrSpecialTldVar:
             zig_panic("TODO");
     }
     zig_unreachable();
@@ -22179,6 +22203,8 @@ static IrInstGen *ir_analyze_instruction_elem_ptr(IrAnalyze *ira, IrInstSrcElemP
                             zig_panic("TODO element ptr of a function casted to a ptr");
                         case ConstPtrSpecialNull:
                             zig_panic("TODO elem ptr on a null pointer");
+                        case ConstPtrSpecialTldVar:
+                            zig_panic("TODO elem ptr on a tld var pointer");
                     }
                     if (new_index >= mem_size) {
                         ir_add_error_node(ira, elem_ptr_instruction->base.base.source_node,
@@ -22248,6 +22274,8 @@ static IrInstGen *ir_analyze_instruction_elem_ptr(IrAnalyze *ira, IrInstSrcElemP
                             zig_panic("TODO elem ptr on a slice that was ptrcast from a function");
                         case ConstPtrSpecialNull:
                             zig_panic("TODO elem ptr on a slice has a null pointer");
+                        case ConstPtrSpecialTldVar:
+                            zig_panic("TODO elem ptr on a slice has a tld var");
                     }
                     return result;
                 } else if (array_type->id == ZigTypeIdArray || array_type->id == ZigTypeIdVector) {
@@ -22688,8 +22716,6 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
     if (tld->resolution == TldResolutionInvalid) {
         return ira->codegen->invalid_inst_gen;
     }
-    if (tld->resolution == TldResolutionResolving)
-        return ir_error_dependency_loop(ira, source_instruction);
 
     switch (tld->id) {
         case TldIdContainer:
@@ -22699,6 +22725,20 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
         case TldIdVar: {
             TldVar *tld_var = (TldVar *)tld;
             ZigVar *var = tld_var->var;
+            if (tld->resolution == TldResolutionResolving) {
+                assert(var == nullptr);
+                AstNode *source_node = tld_var->base.source_node;
+                Scope *scope = tld_var->base.parent_scope;
+                bool is_const = source_node->data.variable_declaration.is_const;
+                AstNode *align_expr = source_node->data.variable_declaration.align_expr;
+                AstNode *type_expr = source_node->data.variable_declaration.type;
+                if (type_expr == nullptr || align_expr != nullptr)
+                    return ir_error_dependency_loop(ira, source_instruction);
+                ZigType *type = analyze_type_expr(ira->codegen, scope, type_expr);
+                ZigType *var_ptr_type = get_pointer_to_type_extra(ira->codegen, type,
+                        is_const, false, PtrLenSingle, 0, 0, 0, false);
+                return ir_build_tld_var_ptr(ira, source_instruction, tld_var, var_ptr_type);
+            }
             assert(var != nullptr);
 
             if (tld_var->extern_lib_name != nullptr) {
@@ -22709,6 +22749,9 @@ static IrInstGen *ir_analyze_decl_ref(IrAnalyze *ira, IrInst* source_instruction
             return ir_get_var_ptr(ira, source_instruction, var);
         }
         case TldIdFn: {
+            if (tld->resolution == TldResolutionResolving)
+                return ir_error_dependency_loop(ira, source_instruction);
+
             TldFn *tld_fn = (TldFn *)tld;
             ZigFn *fn_entry = tld_fn->fn_entry;
             assert(fn_entry->type_entry != nullptr);
@@ -27747,6 +27790,8 @@ static IrInstGen *ir_analyze_instruction_memset(IrAnalyze *ira, IrInstSrcMemset 
                     zig_panic("TODO memset on ptr cast from function");
                 case ConstPtrSpecialNull:
                     zig_panic("TODO memset on null ptr");
+                case ConstPtrSpecialTldVar:
+                    zig_panic("TODO memset on tld var");
             }
 
             size_t count = bigint_as_usize(&count_val->data.x_bigint);
@@ -27881,6 +27926,8 @@ static IrInstGen *ir_analyze_instruction_memcpy(IrAnalyze *ira, IrInstSrcMemcpy 
                     zig_panic("TODO memcpy on ptr cast from function");
                 case ConstPtrSpecialNull:
                     zig_panic("TODO memcpy on null ptr");
+                case ConstPtrSpecialTldVar:
+                    zig_panic("TODO memcpy on tld var");
             }
 
             if (dest_start + count > dest_end) {
@@ -27925,6 +27972,8 @@ static IrInstGen *ir_analyze_instruction_memcpy(IrAnalyze *ira, IrInstSrcMemcpy 
                     zig_panic("TODO memcpy on ptr cast from function");
                 case ConstPtrSpecialNull:
                     zig_panic("TODO memcpy on null ptr");
+                case ConstPtrSpecialTldVar:
+                    zig_panic("TODO memcpy on tld var");
             }
 
             if (src_start + count > src_end) {
@@ -28216,6 +28265,8 @@ done_with_return_type:
                     zig_panic("TODO slice of ptr cast from function");
                 case ConstPtrSpecialNull:
                     zig_panic("TODO slice of null ptr");
+                case ConstPtrSpecialTldVar:
+                    zig_panic("TODO slice of tld var");
             }
         } else if (is_slice(array_type)) {
             ZigValue *slice_ptr = const_ptr_pointee(ira, ira->codegen, ptr_ptr->value, instruction->base.base.source_node);
@@ -28267,6 +28318,8 @@ done_with_return_type:
                     zig_panic("TODO slice of slice cast from function");
                 case ConstPtrSpecialNull:
                     zig_panic("TODO slice of null");
+                case ConstPtrSpecialTldVar:
+                    zig_panic("TODO slice of tld var");
             }
         } else {
             zig_unreachable();
@@ -28372,6 +28425,8 @@ done_with_return_type:
                             zig_panic("TODO slice of ptr cast from function");
                         case ConstPtrSpecialNull:
                             zig_panic("TODO slice of null ptr");
+                        case ConstPtrSpecialTldVar:
+                            zig_panic("TODO slice of tld var");
                     }
                     break;
                 } else if (is_slice(target->type)) {
@@ -28473,6 +28528,8 @@ done_with_return_type:
             case ConstPtrSpecialFunction:
                 zig_panic("TODO");
             case ConstPtrSpecialNull:
+                zig_panic("TODO");
+            case ConstPtrSpecialTldVar:
                 zig_panic("TODO");
         }
 
@@ -32211,6 +32268,7 @@ bool ir_inst_gen_has_side_effects(IrInstGen *instruction) {
         case IrInstGenIdNegationWrapping:
         case IrInstGenIdWasmMemorySize:
         case IrInstGenIdReduce:
+        case IrInstGenIdTldVarPtr:
             return false;
 
         case IrInstGenIdAsm:
